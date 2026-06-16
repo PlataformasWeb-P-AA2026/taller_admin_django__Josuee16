@@ -1,5 +1,4 @@
 from django.db import models
-from django.db.models import Max, Sum
 
 
 class Museo(models.Model):
@@ -11,20 +10,19 @@ class Museo(models.Model):
         return self.nombre
 
     def get_costo_total_produccion(self):
-        return self.guias.aggregate(
-            total=Sum("exhibiciones__costo_produccion")
-        )["total"] or 0
+        total = 0
+        for guia in self.guias.all():
+            for exhibicion in guia.exhibiciones.all():
+                total += float(exhibicion.costo_produccion)
+        return total
 
     def get_guias_mas_experiencia(self):
-        max_exp = self.guias.aggregate(
-            max_exp=Max("años_experiencia_guia")
-        )["max_exp"]
-        if max_exp is None:
+        guias = self.guias.all()
+        if not guias:
             return ""
-        return ", ".join(
-            self.guias.filter(años_experiencia_guia=max_exp)
-            .values_list("nombre_completo", flat=True)
-        )
+        max_exp = max(g.años_experiencia_guia for g in guias)
+        nombres = [g.nombre_completo for g in guias if g.años_experiencia_guia == max_exp]
+        return ", ".join(nombres)
 
 
 class GuiaMuseo(models.Model):
